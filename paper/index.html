@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Content Refresh Opportunity Scoring</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="container">
+    <p class="eyebrow">FlyRank ML Internship Capstone</p>
+    <h1>Content Refresh Opportunity Scoring: A Decision-Support Approach for Prioritizing Content Review</h1>
+    <p class="author">Cholleti Saisathwik</p>
+  </div>
+</header>
+<main class="container">
+<section><h2>Abstract</h2>
+<p>This study asks which existing content items should be reviewed first for refresh, expansion, protection, pruning, or monitoring. The analysis uses the public-safe anonymized starter dataset supplied for the FlyRank ML Internship, with one row representing a pseudonymized content item and trailing 90-day performance signals. Logistic Regression, Decision Tree, and Random Forest models are compared with a transparent rule-based baseline using a client-aware holdout when available and the same test split for comparison. In the documented starter results, the Random Forest produced a ROC-AUC of 0.750, average precision of 0.618, and Precision@50 of 0.740, compared with baseline ROC-AUC 0.627, average precision 0.468, and Precision@50 0.240. The resulting score is intended to order items for human review and decision support, not to guarantee that a refresh will improve future performance.</p>
+</section>
+<section><h2>1. Introduction / Problem</h2>
+<p>Content teams may have many existing pages and limited review capacity. The practical question is how to turn observed performance, freshness, visibility, and content attributes into a review queue that can be inspected by people.</p>
+<p>The ML task is classification plus ranking. The target is <code>is_declining_label</code>, a proxy derived from the observed trend direction. The output is a model probability and combined ranking score used to prioritize review.</p>
+</section>
+<section><h2>2. Data</h2>
+<p>The starter dataset contains 30,000 anonymized rows and 44 source columns. Each row represents a pseudonymized content item with trailing-90-day metrics. The public-safe workflow filters to items with impressions and sufficient content age, and deduplicates by content ID.</p>
+<p>Identifiers are used only for grouping, joining, and client-aware validation; they are not model features. Trend fields used to construct the target are excluded from the feature matrix to reduce leakage risk. Rate fields are interpreted using the dataset's documented percentage convention.</p>
+</section>
+<section><h2>3. Methodology</h2>
+<p>The analysis compares Logistic Regression, a constrained Decision Tree, and a Random Forest against a transparent baseline. The feature set contains numeric performance, freshness, content, and search-related fields plus selected categorical attributes. Numeric and categorical features are prepared consistently, while the target is kept separate from trend-derived leakage fields.</p>
+<p>Where possible, validation holds out clients so that content from the same client is not split across train and test. If the available slice cannot support that split, the workflow falls back to a stratified row split. Model comparison uses the same test split and reports Precision@20, Precision@50, Precision@100, ROC-AUC, and average precision.</p>
+</section>
+<section><h2>4. Results</h2>
+<table><thead><tr><th>Method</th><th>Precision@50</th><th>ROC-AUC</th><th>Average Precision</th></tr></thead>
+<tbody><tr><td>Rule-based baseline</td><td>0.240</td><td>0.627</td><td>0.468</td></tr>
+<tr><td>Logistic Regression</td><td>0.400</td><td>0.700</td><td>0.522</td></tr>
+<tr><td>Decision Tree</td><td>0.540</td><td>0.742</td><td>0.575</td></tr>
+<tr><td>Random Forest</td><td>0.740</td><td>0.750</td><td>0.618</td></tr></tbody></table>
+<p>Using the repository's documented selection rule, Precision@50 is the primary comparison metric, with average precision and ROC-AUC as additional measures. The Random Forest is used as the selected ranking model in this analysis.</p>
+<div class="notice">These results describe observed performance on the starter evaluation slice. They are not a causal estimate of the effect of refreshing content.</div>
+</section>
+<section><h2>5. Limitations &amp; Honest Framing</h2>
+<ul>
+<li>The target is a proxy for observed decline, not future refresh success.</li>
+<li>The analysis is predictive and does not establish that a recommended action causes improvement.</li>
+<li>The starter slice is not the full production warehouse and may not represent every content situation.</li>
+<li>Seasonality, time-window changes, and future search behavior can change the observed signals.</li>
+<li>Human review remains necessary before any content change or removal.</li>
+<li>A high score means higher priority for review under this workflow; it is not a guarantee of outcome.</li>
+</ul>
+</section>
+<section><h2>6. Ranked Recommendations</h2>
+<p>The final queue combines the selected model probability with the normalized transparent baseline score. The queue is a review order rather than an automatic action list.</p>
+<ol>
+<li>Review high-confidence items with strong model decline risk and meaningful visibility.</li>
+<li>Inspect visible pages with low click-through signals for possible title, snippet, intent, or positioning issues.</li>
+<li>Review pages with weak engagement or scroll signals for content-depth and user-experience issues.</li>
+<li>Inspect stale pages with continued visibility before deciding whether to refresh, expand, protect, prune, or monitor.</li>
+</ol>
+<p>These recommendations should be checked against the actual page, intent, business context, and current performance before action.</p>
+</section>
+<section><h2>7. Artifacts</h2>
+<p>The repository contains the capstone notebook, model comparison outputs, evaluation outputs, and generated charts used by the analysis. The notebook is the reproducible source for the analysis workflow.</p>
+</section>
+<section><h2>8. Reproducibility</h2>
+<p>Run the notebook at <code>work/notebooks/capstone.ipynb</code> from the repository root. The notebook uses the repository's feature-preparation, baseline, training, and evaluation scripts and writes analysis artifacts under <code>outputs/</code>.</p>
+<p>The model workflow uses fixed random seeds where applicable and documents the target, leakage checks, validation approach, and metrics in the notebook.</p>
+</section>
+<section><h2>9. Acknowledgments &amp; Data Credit</h2>
+<p>This capstone was completed as part of the FlyRank ML Internship using the public-safe anonymized starter dataset and repository materials supplied for the internship. Data credit: FlyRank.</p>
+</section>
+<footer><p>Research artifact by Cholleti Saisathwik.</p><p><a href="https://github.com/saisathwik2703/flyrank-ml-internship-starter">Repository</a> · <a href="https://flyrank.ai/">FlyRank</a></p></footer>
+</main>
+</body>
+</html>
