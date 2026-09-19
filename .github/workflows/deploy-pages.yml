@@ -10,6 +10,7 @@ permissions:
   pages: write
   id-token: write
 
+# Allow only one Pages deployment at a time
 concurrency:
   group: "pages"
   cancel-in-progress: false
@@ -17,6 +18,9 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # Maximum time allowed for the whole job
+    timeout-minutes: 30
 
     environment:
       name: github-pages
