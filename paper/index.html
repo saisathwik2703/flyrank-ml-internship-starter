@@ -16,59 +16,78 @@
 </header>
 <main class="container">
 <section><h2>Abstract</h2>
-<p>This study asks which existing content items should be reviewed first for refresh, expansion, protection, pruning, or monitoring. The analysis uses the public-safe anonymized starter dataset supplied for the FlyRank ML Internship, with one row representing a pseudonymized content item and trailing 90-day performance signals. Logistic Regression, Decision Tree, and Random Forest models are compared with a transparent rule-based baseline using a client-aware holdout when available and the same test split for comparison. In the documented starter results, the Random Forest produced a ROC-AUC of 0.750, average precision of 0.618, and Precision@50 of 0.740, compared with baseline ROC-AUC 0.627, average precision 0.468, and Precision@50 0.240. The resulting score is intended to order items for human review and decision support, not to guarantee that a refresh will improve future performance.</p>
+<p>This study asks which existing content items should be reviewed first for refresh, expansion, protection, pruning, or monitoring. The analysis uses the public-safe anonymized FlyRank internship starter release, containing 30,000 content-item rows from 32 pseudonymized clients with trailing-90-day metrics. Logistic Regression, Decision Tree, and Random Forest models are compared with a transparent rule-based baseline using client-aware validation when supported and the same evaluation split for comparison. In the documented starter results, Random Forest produced ROC-AUC 0.750, Average Precision 0.618, and Precision@50 0.740, compared with 0.627, 0.468, and 0.240 for the baseline. The resulting score is intended to order items for human review and decision support, not to guarantee that a refresh will improve future performance.</p>
 </section>
-<section><h2>1. Introduction / Problem</h2>
-<p>Content teams may have many existing pages and limited review capacity. The practical question is how to turn observed performance, freshness, visibility, and content attributes into a review queue that can be inspected by people.</p>
-<p>The ML task is classification plus ranking. The target is <code>is_declining_label</code>, a proxy derived from the observed trend direction. The output is a model probability and combined ranking score used to prioritize review.</p>
+
+<section><h2>1. Introduction / Problem statement</h2>
+<p>FlyRank's content-focused problem is a prioritization problem: a content team may have many existing items to review while review capacity is limited. This case study asks how observed search visibility, freshness, content depth, engagement, and traffic signals can be combined into a practical queue for deciding which existing content items should be inspected first for refresh, expansion, protection, pruning, or monitoring.</p>
+<p>The ML task is classification followed by ranking. The target is <code>is_declining_label</code>, a public-safe proxy derived from observed trend direction. The output is a model probability combined with a transparent baseline score to prioritize review.</p>
 </section>
+
 <section><h2>2. Data</h2>
-<p>The starter dataset contains 30,000 anonymized rows and 44 source columns. Each row represents a pseudonymized content item with trailing-90-day metrics. The public-safe workflow filters to items with impressions and sufficient content age, and deduplicates by content ID.</p>
-<p>Identifiers are used only for grouping, joining, and client-aware validation; they are not model features. Trend fields used to construct the target are excluded from the feature matrix to reduce leakage risk. Rate fields are interpreted using the dataset's documented percentage convention.</p>
+<p><strong>Source/release:</strong> the FlyRank ML Internship starter dataset in the repository, <code>data/raw/content_refresh_anonymized.csv</code>. It contains 30,000 rows × 44 source columns, 32 pseudonymized clients, one row per pseudonymized content item, and trailing-90-day metrics. The starter slice is the actual data used for this analysis; the gated ~79M-row warehouse release was not required for this capstone analysis.</p>
+<p><strong>Time window:</strong> each content row summarizes a trailing 90-day performance window. Content age was also used as an eligibility condition so that very new items were not treated as refresh candidates.</p>
+<p><strong>Filtering/exclusions:</strong> items were restricted to <code>impressions_90d &gt; 0</code> and <code>content_age_days &gt;= 90</code>, then deduplicated by <code>content_id</code>. The first filter removes items with no observed search visibility in the window; the age filter avoids treating very new content as mature refresh candidates; deduplication keeps one content item per identifier. <code>content_id</code> and <code>client_id</code> are pseudonyms used for grouping, joining, and validation only, never as model features.</p>
+<p><strong>Leakage/public-safety rules:</strong> <code>is_declining_label</code> is derived from <code>trend_direction</code>, which is computed from <code>trend_pct</code>; therefore <code>trend_direction</code> and <code>trend_pct</code> are excluded from the feature matrix. No client names, private queries, titles, domains, or credentials are used in the paper.</p>
 </section>
+
 <section><h2>3. Methodology</h2>
-<p>The analysis compares Logistic Regression, a constrained Decision Tree, and a Random Forest against a transparent baseline. The feature set contains numeric performance, freshness, content, and search-related fields plus selected categorical attributes. Numeric and categorical features are prepared consistently, while the target is kept separate from trend-derived leakage fields.</p>
-<p>Where possible, validation holds out clients so that content from the same client is not split across train and test. If the available slice cannot support that split, the workflow falls back to a stratified row split. Model comparison uses the same test split and reports Precision@20, Precision@50, Precision@100, ROC-AUC, and average precision.</p>
+<p>The workflow compares a transparent rule-based baseline with Logistic Regression, a constrained Decision Tree, and Random Forest. Features cover observed performance, freshness, content attributes, visibility, traffic, and selected categorical fields. Numeric and categorical features are prepared consistently and the target is kept separate from trend-derived leakage fields.</p>
+<p>Where the data supports it, validation holds out clients so that content from the same client is not split across train and test. If the available slice cannot support a client-aware split, the workflow falls back to a stratified row split. All methods are evaluated on the same test split. Metrics include Precision@20, Precision@50, Precision@100, ROC-AUC, and Average Precision.</p>
+<p>The final review score combines the selected model probability with the normalized transparent baseline score. The queue is a ranking signal for human review, not an automated content-change decision.</p>
 </section>
+
 <section><h2>4. Results</h2>
 <table><thead><tr><th>Method</th><th>Precision@50</th><th>ROC-AUC</th><th>Average Precision</th></tr></thead>
 <tbody><tr><td>Rule-based baseline</td><td>0.240</td><td>0.627</td><td>0.468</td></tr>
 <tr><td>Logistic Regression</td><td>0.400</td><td>0.700</td><td>0.522</td></tr>
 <tr><td>Decision Tree</td><td>0.540</td><td>0.742</td><td>0.575</td></tr>
 <tr><td>Random Forest</td><td>0.740</td><td>0.750</td><td>0.618</td></tr></tbody></table>
-<p>Using the repository's documented selection rule, Precision@50 is the primary comparison metric, with average precision and ROC-AUC as additional measures. The Random Forest is used as the selected ranking model in this analysis.</p>
-<div class="notice">These results describe observed performance on the starter evaluation slice. They are not a causal estimate of the effect of refreshing content.</div>
+
+<figure><img src="precision_at_50_comparison.svg" alt="Bar chart comparing Precision at 50 for baseline, Logistic Regression, Decision Tree, and Random Forest"><figcaption><strong>Precision@50:</strong> the documented starter evaluation reports 0.740 for Random Forest versus 0.240 for the transparent baseline on the same evaluation split.</figcaption></figure>
+<figure><img src="roc_auc_comparison.svg" alt="Bar chart comparing ROC-AUC for baseline, Logistic Regression, Decision Tree, and Random Forest"><figcaption><strong>ROC-AUC:</strong> the models and baseline are compared on the same evaluation split; Random Forest is 0.750 in the documented starter result.</figcaption></figure>
+<figure><img src="average_precision_comparison.svg" alt="Bar chart comparing Average Precision for baseline, Logistic Regression, Decision Tree, and Random Forest"><figcaption><strong>Average Precision:</strong> the documented starter result is 0.618 for Random Forest and 0.468 for the baseline.</figcaption></figure>
+<p>Using the repository's documented selection rule, Precision@50 is the primary comparison metric, with Average Precision and ROC-AUC as supporting measures. The Random Forest output is therefore used as the selected ranking signal in this analysis.</p>
+<div class="notice">These are measured predictive results on the documented starter evaluation slice. They do not establish that refreshing a selected page causes future performance improvement.</div>
 </section>
-<section><h2>5. Limitations &amp; Honest Framing</h2>
+
+<section><h2>5. Limitations &amp; honest framing</h2>
 <ul>
 <li>The target is a proxy for observed decline, not future refresh success.</li>
-<li>The analysis is predictive and does not establish that a recommended action causes improvement.</li>
-<li>The starter slice is not the full production warehouse and may not represent every content situation.</li>
-<li>Seasonality, time-window changes, and future search behavior can change the observed signals.</li>
-<li>Human review remains necessary before any content change or removal.</li>
-<li>A high score means higher priority for review under this workflow; it is not a guarantee of outcome.</li>
+<li>The analysis is predictive and does not establish causal impact from any content intervention.</li>
+<li>The starter dataset is a 30,000-row anonymized slice, not the full warehouse, so coverage is limited.</li>
+<li>The trailing-90-day window can reflect seasonality and changing search behavior.</li>
+<li>Validation reduces some leakage risk but does not reproduce every future deployment condition.</li>
+<li>Human review is required before refresh, expansion, protection, pruning, or monitoring decisions.</li>
+<li>A high score means higher review priority under this workflow; it is not a guarantee of an outcome.</li>
 </ul>
 </section>
-<section><h2>6. Ranked Recommendations</h2>
-<p>The final queue combines the selected model probability with the normalized transparent baseline score. The queue is a review order rather than an automatic action list.</p>
+
+<section><h2>6. Ranked recommendations</h2>
+<p>The ranked queue is an action-oriented review order. Each item should be inspected by a person before an intervention is chosen.</p>
 <ol>
-<li>Review high-confidence items with strong model decline risk and meaningful visibility.</li>
-<li>Inspect visible pages with low click-through signals for possible title, snippet, intent, or positioning issues.</li>
-<li>Review pages with weak engagement or scroll signals for content-depth and user-experience issues.</li>
-<li>Inspect stale pages with continued visibility before deciding whether to refresh, expand, protect, prune, or monitor.</li>
+<li><strong>Review high-confidence decline-risk items first.</strong> Check whether the model signal is supported by meaningful visibility and recent performance evidence.</li>
+<li><strong>Inspect visible pages with weak click-through signals.</strong> Review whether title, snippet, intent match, or positioning warrants investigation.</li>
+<li><strong>Inspect weak engagement or scroll signals.</strong> Review content depth, clarity, and user experience before choosing an action.</li>
+<li><strong>Inspect stale content that still has visibility.</strong> Compare current intent and content quality before deciding whether to refresh, expand, protect, prune, or monitor.</li>
 </ol>
-<p>These recommendations should be checked against the actual page, intent, business context, and current performance before action.</p>
+<p>These are decision-support recommendations derived from observed signals. They should be checked against the current page, intent, context, and business relevance.</p>
 </section>
-<section><h2>7. Artifacts</h2>
-<p>The repository contains the capstone notebook, model comparison outputs, evaluation outputs, and generated charts used by the analysis. The notebook is the reproducible source for the analysis workflow.</p>
+
+<section><h2>7. Reproducibility</h2>
+<p><a href="https://github.com/saisathwik2703/flyrank-ml-internship-starter">Repository</a> · <a href="https://github.com/saisathwik2703/flyrank-ml-internship-starter/blob/main/work/notebooks/capstone.ipynb">Capstone notebook</a> · <a href="https://colab.research.google.com/github/saisathwik2703/flyrank-ml-internship-starter/blob/main/work/notebooks/capstone.ipynb">Open notebook in Colab</a></p>
+<p>Run <code>work/notebooks/capstone.ipynb</code> from the repository workflow. The notebook uses the feature-preparation, baseline, training, and evaluation scripts and writes artifacts under <code>outputs/</code>. Fixed random seeds are used where applicable, and the notebook documents the target, feature exclusions, leakage checks, validation design, and metrics.</p>
 </section>
-<section><h2>8. Reproducibility</h2>
-<p>Run the notebook at <code>work/notebooks/capstone.ipynb</code> from the repository root. The notebook uses the repository's feature-preparation, baseline, training, and evaluation scripts and writes analysis artifacts under <code>outputs/</code>.</p>
-<p>The model workflow uses fixed random seeds where applicable and documents the target, leakage checks, validation approach, and metrics in the notebook.</p>
+
+<section><h2>8. Artifacts</h2>
+<p>The paper includes the measured model-comparison charts. The repository also contains the capstone notebook, model report, refresh-queue sample, feature/baseline/training/evaluation scripts, and other analysis materials.</p>
 </section>
-<section><h2>9. Acknowledgments &amp; Data Credit</h2>
-<p>This capstone was completed as part of the FlyRank ML Internship using the public-safe anonymized starter dataset and repository materials supplied for the internship. Data credit: FlyRank.</p>
+
+<section><h2>9. Acknowledgments &amp; data credit</h2>
+<p><strong>Built on the FlyRank ML Internship dataset.</strong> This capstone was completed as part of the FlyRank ML Internship using the public-safe anonymized starter dataset and internship repository materials.</p>
+<p><a href="https://flyrank.ai/">FlyRank</a></p>
 </section>
+
 <footer><p>Research artifact by Cholleti Saisathwik.</p><p><a href="https://github.com/saisathwik2703/flyrank-ml-internship-starter">Repository</a> · <a href="https://flyrank.ai/">FlyRank</a></p></footer>
 </main>
 </body>
